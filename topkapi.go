@@ -8,13 +8,17 @@ import (
 	"github.com/dgryski/go-metro"
 )
 
+type LocalHeavyHitter struct {
+	Key   string
+	Count uint64
+}
+
 type Sketch struct {
-	delta   float64
-	epsilon float64
-	l       uint64 // number of rows
-	b       uint64 // think of this as the k
-	cms     [][]uint64
-	words   [][]string
+	l      uint64 // number of rows
+	b      uint64 // think of this as the k
+	cms    [][]uint64
+	counts [][]int64
+	words  [][]string
 }
 
 // New creates a new Topkapi Sketch with given error rate and confidence.
@@ -30,41 +34,69 @@ func New(delta, epsilon float64) (*Sketch, error) {
 	}
 
 	var (
-		b     = uint64(math.Ceil(1 / delta))
-		l     = uint64(math.Log(2 / epsilon))
-		cms   = make([][]uint64, l)
-		words = make([][]string, l)
+		b = uint64(math.Ceil(1 / delta))
+		l = uint64(math.Log(2 / epsilon))
 	)
 
-	for i := range cms {
+	return newSketch(b, l), nil
+
+}
+
+func NewK(k uint64) (*Sketch, error) {
+	if k < 1 {
+		return nil, errors.New("topkapi: value of k should be in >= 1")
+	}
+
+	var (
+		b        = k * 100
+		l uint64 = 7
+	)
+
+	return newSketch(b, l), nil
+}
+
+func newSketch(b, l uint64) *Sketch {
+	var (
+		cms    = make([][]uint64, l)
+		counts = make([][]int64, l)
+		words  = make([][]string, l)
+	)
+
+	for i := range counts {
 		cms[i] = make([]uint64, b)
+		counts[i] = make([]int64, b)
 		words[i] = make([]string, b)
 	}
 
 	return &Sketch{
-		delta:   delta,
-		epsilon: epsilon,
-		l:       l,
-		b:       b,
-		cms:     cms,
-		words:   words,
-	}, nil
+		l:      l,
+		b:      b,
+		counts: counts,
+		words:  words,
+		cms:    cms,
+	}
 }
 
-func (sk *Sketch) Update(key string, count uint64) {
-	hsum := metro.Hash64Str(key, 1337)
-	h1 := uint32(hsum & 0xffffffff)
-	h2 := uint32((hsum >> 32) & 0xffffffff)
+func (sk *Sketch) Insert(key string, count uint64) {
+	var (
+		hsum = metro.Hash64Str(key, 1337)
+		h1   = uint32(hsum & 0xffffffff)
+		h2   = uint32((hsum >> 32) & 0xffffffff)
+	)
 
-	for i := range sk.cms {
-		hi := uint64((h1 + uint32(i)*h2)) % sk.b
+	for i := range sk.counts {
+		h := uint64((h1 + uint32(i)*h2))
+		hi := h % sk.b
+
+		sk.cms[i][hi] += count
+
 		if sk.words[i][hi] == key {
-			sk.cms[i][hi]++
+			sk.counts[i][hi] += int64(count)
 		} else {
-			sk.cms[i][hi]--
-			if sk.cms[i][hi] <= 0 {
+			sk.counts[i][hi] -= int64(count)
+			if sk.counts[i][hi] <= 0 {
 				sk.words[i][hi] = key
-				sk.cms[i][hi] = 1
+				sk.counts[i][hi] = 1
 			}
 		}
 	}
@@ -73,30 +105,32 @@ func (sk *Sketch) Update(key string, count uint64) {
 func (sk *Sketch) Result(threshold uint64) []LocalHeavyHitter {
 	var (
 		seen = make(map[string]int)
-		cs   = make([]LocalHeavyHitter, sk.b)
+		cs   = make([]LocalHeavyHitter, 0, sk.b)
 	)
 
 	for i := range sk.words {
 		for j, word := range sk.words[i] {
 			count := sk.cms[i][j]
-			idx, ok := seen[word]
-			if !ok {
-				cs = append(cs, LocalHeavyHitter{
-					key:   word,
-					count: count,
-				})
-				idx = len(cs)
-				seen[word] = idx
+			if count < threshold {
 				continue
 			}
-			if count > cs[idx].count {
-				cs[idx].count = count
+			idx, ok := seen[word]
+			if !ok {
+				idx = len(cs)
+				seen[word] = idx
+				cs = append(cs, LocalHeavyHitter{
+					Key:   word,
+					Count: count,
+				})
+			}
+			if count < cs[idx].Count {
+				cs[idx].Count = count
 			}
 		}
 	}
 
 	sort.Slice(cs, func(a, b int) bool {
-		return cs[a].count < cs[b].count
+		return cs[a].Count > cs[b].Count
 	})
 
 	return cs
