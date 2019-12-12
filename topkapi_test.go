@@ -160,3 +160,118 @@ func TestMerge2(t *testing.T) {
 	assertErrorRate(t, exactAll, sketch1.Result(1), sketch1.Delta(), sketch1.Epsilon())        // Should pass according to article, but does not
 	assertErrorRate(t, exactAll, sketch1.Result(1)[:topK], sketch1.Delta(), sketch1.Epsilon()) // We would LOVE this to pass!
 }
+
+func TestTheShebang(t *testing.T) {
+	words := loadWords()
+
+	// Words in prime index positions are copied
+	for _, p := range []int{2, 3, 5, 7, 11, 13, 17, 23} {
+		for i := p; i < len(words); i += p {
+			words[i] = words[p]
+		}
+	}
+
+	cases := []struct {
+		name   string
+		slices [][]string
+		delta  float64
+		topk   int
+	}{
+		{
+			name:   "Single slice top20 d=0.01",
+			slices: split(words, 1),
+			delta:  0.01,
+			topk:   20,
+		},
+		{
+			name:   "Two slices top20 d=0.01",
+			slices: split(words, 2),
+			delta:  0.01,
+			topk:   20,
+		},
+		{
+			name:   "Three slices top20 d=0.01",
+			slices: split(words, 3),
+			delta:  0.01,
+			topk:   20,
+		},
+	}
+
+	for _, cas := range cases {
+		t.Run(cas.name, func(t *testing.T) {
+			caseRunner(t, cas.slices, uint64(cas.topk), cas.delta)
+		})
+	}
+}
+
+func caseRunner(t *testing.T, slices [][]string, topk uint64, delta float64) {
+	var sketches []*Sketch
+	var corpusSize int
+
+	// Find corpus size
+	for _, slice := range slices {
+		corpusSize += len(slice)
+	}
+
+	// Build sketches for each slice
+	for _, slice := range slices {
+		sk, err := NewTopK(topk, uint64(corpusSize), delta)
+		if err != nil {
+			panic(err)
+		}
+		for _, w := range slice {
+			sk.Insert(w, 1)
+		}
+		exact := exactCount(slice)
+
+		assertErrorRate(t, exact, sk.Result(1), sk.Delta(), sk.Epsilon())
+
+		sketches = append(sketches, sk)
+	}
+
+	if len(slices) == 1 {
+		return
+	}
+
+	// Compute exact stats for entire corpus
+	var allSlice []string
+	for _, slice := range slices {
+		allSlice = append(allSlice, slice...)
+	}
+	exactAll := exactCount(allSlice)
+
+	// Merge all sketches - checking state each step of the way
+	mainSketch := sketches[0]
+	for _, sk := range sketches[1:] {
+		mainSketch.Merge(sk)
+		assertErrorRate(t, exactAll, mainSketch.Result(1), mainSketch.Delta(), mainSketch.Epsilon())
+	}
+}
+
+// split and array of strings into n slices
+func split(words []string, splits int) [][]string {
+	l := len(words)
+	step := l / splits
+
+	slices := make([][]string, 0, splits)
+	for i := 0; i < splits; i++ {
+		if i == splits-1 {
+			slices = append(slices, words[i*step:])
+		} else {
+			slices = append(slices, words[i*step:i*step+step])
+		}
+	}
+
+	sanityCheck := 0
+	for _, slice := range slices {
+		sanityCheck += len(slice)
+	}
+	if sanityCheck != l {
+		panic("Internal error")
+	}
+	if len(slices) != splits {
+		panic(fmt.Sprintf("Num splits mismatch %d/%d", len(slices), splits))
+	}
+
+	return slices
+}
