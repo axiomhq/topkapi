@@ -195,6 +195,12 @@ func TestTheShebang(t *testing.T) {
 			delta:  0.01,
 			topk:   20,
 		},
+		{
+			name:   "100 slices top20 d=0.01",
+			slices: split(words, 100),
+			delta:  0.01,
+			topk:   20,
+		},
 	}
 
 	for _, cas := range cases {
