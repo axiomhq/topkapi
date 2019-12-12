@@ -6,6 +6,7 @@ import (
 	"io"
 	"math"
 	"os"
+	"sort"
 	"strings"
 	"testing"
 )
@@ -44,6 +45,19 @@ func exactCount(words []string) map[string]uint64 {
 	}
 
 	return m
+}
+
+func exactTop(m map[string]uint64) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+
+	sort.Slice(keys, func(a, b int) bool {
+		return m[keys[a]] > m[keys[b]]
+	})
+
+	return keys
 }
 
 // epsilon: count should be within exact*epsilon range
@@ -229,8 +243,19 @@ func caseRunner(t *testing.T, slices [][]string, topk uint64, delta float64) {
 			sk.Insert(w, 1)
 		}
 		exact := exactCount(slice)
+		top := exactTop(exact)
+		skTop := sk.Result(1)
 
 		assertErrorRate(t, exact, sk.Result(1), sk.Delta(), sk.Epsilon())
+
+		// Assert order of heavy hitters in sub-sketch is as expected
+		// TODO: by way of construction of test set we have pandemonium after #8, would like to check top[:topk]
+		for i, w := range top[:8] {
+			if w != skTop[i].Key && exact[w] != skTop[i].Count {
+				fmt.Println("key", w, exact[w])
+				t.Errorf("Expected top %d/%d to be '%s'(%d) found '%s'(%d)", i, topk, w, exact[w], skTop[i].Key, skTop[i].Count)
+			}
+		}
 
 		sketches = append(sketches, sk)
 	}
@@ -251,6 +276,16 @@ func caseRunner(t *testing.T, slices [][]string, topk uint64, delta float64) {
 	for _, sk := range sketches[1:] {
 		mainSketch.Merge(sk)
 		assertErrorRate(t, exactAll, mainSketch.Result(1), mainSketch.Delta(), mainSketch.Epsilon())
+	}
+
+	// Assert order of heavy hitters in final result is as expected
+	// TODO: by way of construction of test set we have pandemonium after #8, would like to check top[:topk]
+	top := exactTop(exactAll)
+	skTop := mainSketch.Result(1)
+	for i, w := range top[:8] {
+		if w != skTop[i].Key {
+			t.Errorf("Expected top %d/%d to be '%s'(%d) found '%s'(%d)", i, topk, w, exactAll[w], skTop[i].Key, skTop[i].Count)
+		}
 	}
 }
 
