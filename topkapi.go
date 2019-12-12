@@ -51,9 +51,12 @@ func NewTopK(k, approxCorpusSize uint64, delta float64) (*Sketch, error) {
 		return nil, errors.New("topkapi: value of k should be in >= 1")
 	}
 
-	// topkapi requires  epsilon < phi, where k = phi*corpusSize
+	// topkapi requires epsilon < phi, where k = phi*corpusSize
 	phi := float64(k) / float64(approxCorpusSize)
-	epsilon := phi * 0.80 // 8% error margin for top10 in corpus size 100
+	epsilon := phi * 0.5 // 5% error margin for top10 in corpus size 100
+
+	// if epsilon/phi becomes a little larger than 0.5 accumulated errors
+	// on merge seem to spiral out of control...
 
 	return New(delta, epsilon)
 }
@@ -78,6 +81,16 @@ func newSketch(b, l uint64) *Sketch {
 		words:  words,
 		cms:    cms,
 	}
+}
+
+// Epsilon is the approximate error range factor.
+func (sk *Sketch) Epsilon() float64 {
+	return 1.0 / float64(sk.b)
+}
+
+// Delta is the probability for a measurement to be outside the epsilon range
+func (sk *Sketch) Delta() float64 {
+	return 2.0 / math.Exp(float64(sk.l))
 }
 
 func (sk *Sketch) Insert(key string, count uint64) {
@@ -144,25 +157,24 @@ func (sk *Sketch) Merge(other *Sketch) error {
 		return incompatibleSketches
 	}
 
+	// HALP: This is probably wrong - the article doesn't explain how to merge!
 	for i := range sk.counts {
 		ws := sk.words[i]
 		ows := other.words[i]
 		cnt := sk.counts[i]
 		ocnt := other.counts[i]
+		cms := sk.cms[i]
+		ocms := other.cms[i]
 		for j := range cnt {
 			if ws[j] == ows[j] {
 				cnt[j] += ocnt[j]
+				cms[j] += ocms[j]
 			} else if cnt[j] < ocnt[j] {
 				ws[j] = ows[j]
 				cnt[j] = ocnt[j]
+				cms[j] = ocms[j]
 			}
 
-		}
-
-		cms := sk.cms[i]
-		ocms := other.cms[i]
-		for j := range cms {
-			cms[j] += ocms[j]
 		}
 	}
 

@@ -58,7 +58,7 @@ func errorRate(epsilon float64, exact, sketch map[string]uint64) float64 {
 
 		if wc < lowerBound || wc > upperBound {
 			numBad++
-			//fmt.Printf("!! %s: %d not in range [%d, %d]\n", w, wc, lowerBound, upperBound)
+			//fmt.Printf("!! %s: %d not in range [%d, %d], epsilon=%f\n", w, wc, lowerBound, upperBound, epsilon)
 		} else {
 			numOk++
 		}
@@ -79,14 +79,14 @@ func resultToMap(result []LocalHeavyHitter) map[string]uint64 {
 func assertErrorRate(t *testing.T, exact map[string]uint64, result []LocalHeavyHitter, delta, epsilon float64) {
 	t.Helper() // Indicates to the testing framework that this is a helper func to skip in stack traces
 	sketch := resultToMap(result)
-	effectiveEpsilon := errorRate(epsilon, exact, sketch)
-	if effectiveEpsilon >= epsilon {
-		t.Errorf("Expected error rate <= %f. Found %f. Sketch size: %d", epsilon, effectiveEpsilon, len(sketch))
+	effectiveDelta := errorRate(epsilon, exact, sketch)
+	if effectiveDelta >= delta {
+		t.Errorf("Expected error rate <= %f. Found %f. Sketch size: %d", delta, effectiveDelta, len(sketch))
 	}
 }
 
 func TestDeltaEpsilon(t *testing.T) {
-	delta := 0.01
+	delta := 0.05
 	epsilon := 0.05
 	topK := uint64(10)
 
@@ -112,8 +112,7 @@ func TestDeltaEpsilon(t *testing.T) {
 }
 
 func TestMerge2(t *testing.T) {
-	delta := 0.01
-	epsilon := 0.05
+	delta := 0.01 // FIXME: tests fail for 0.03
 	topK := uint64(20)
 
 	words := loadWords()
@@ -144,9 +143,9 @@ func TestMerge2(t *testing.T) {
 	exact2 := exactCount(words2)
 	exactAll := exactCount(words)
 
-	assertErrorRate(t, exact1, sketch1.Result(1), delta, epsilon)
-	assertErrorRate(t, exact2, sketch2.Result(1), delta, epsilon)
-	assertErrorRate(t, exactAll, sketch2.Result(1), delta, epsilon) // This should NOT PASS but it does
+	assertErrorRate(t, exact1, sketch1.Result(1), sketch1.Delta(), sketch1.Epsilon())
+	assertErrorRate(t, exact2, sketch2.Result(1), sketch2.Delta(), sketch2.Epsilon())
+	assertErrorRate(t, exactAll, sketch2.Result(1), sketch2.Delta(), sketch2.Epsilon()) // This should NOT PASS but it does
 	//assertErrorRate(t, exact1, sketch1.Result(1)[:topK], delta, epsilon) // We would LOVE this to pass!
 	//assertErrorRate(t, exact2, sketch2.Result(1)[:topK], delta, epsilon) // We would LOVE this to pass!
 
@@ -155,9 +154,9 @@ func TestMerge2(t *testing.T) {
 	}
 
 	for _, res := range sketch1.Result(1)[:topK] {
-		fmt.Printf("%s=%d (exact: %d)\n", res.Key, res.Count, exactAll[res.Key])
+		fmt.Printf("%s=%d (%d)\n", res.Key, res.Count, exactAll[res.Key])
 	}
 
-	assertErrorRate(t, exactAll, sketch1.Result(1), delta, epsilon)        // Should pass according to article, but does not
-	assertErrorRate(t, exactAll, sketch1.Result(1)[:topK], delta, epsilon) // We would LOVE this to pass!
+	assertErrorRate(t, exactAll, sketch1.Result(1), sketch1.Delta(), sketch1.Epsilon())        // Should pass according to article, but does not
+	assertErrorRate(t, exactAll, sketch1.Result(1)[:topK], sketch1.Delta(), sketch1.Epsilon()) // We would LOVE this to pass!
 }
