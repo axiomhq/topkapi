@@ -67,17 +67,18 @@ func errorRate(epsilon float64, exact, sketch map[string]uint64) float64 {
 	return float64(numBad) / float64(len(sketch))
 }
 
-func sketchToMap(sk *Sketch) map[string]uint64 {
-	res := make(map[string]uint64, 1024)
-	for _, lhh := range sk.Result(1) {
+func resultToMap(result []LocalHeavyHitter) map[string]uint64 {
+	res := make(map[string]uint64, len(result))
+	for _, lhh := range result {
 		res[lhh.Key] = lhh.Count
 	}
 
 	return res
 }
 
-func assertErrorRate(t *testing.T, exact map[string]uint64, sk *Sketch, delta, epsilon float64) {
-	sketch := sketchToMap(sk)
+func assertErrorRate(t *testing.T, exact map[string]uint64, result []LocalHeavyHitter, delta, epsilon float64) {
+	t.Helper() // Indicates to the testing framework that this is a helper func to skip in stack traces
+	sketch := resultToMap(result)
 	effectiveEpsilon := errorRate(epsilon, exact, sketch)
 	if effectiveEpsilon >= epsilon {
 		t.Errorf("Expected error rate <= %f. Found %f. Sketch size: %d", epsilon, effectiveEpsilon, len(sketch))
@@ -87,6 +88,7 @@ func assertErrorRate(t *testing.T, exact map[string]uint64, sk *Sketch, delta, e
 func TestDeltaEpsilon(t *testing.T) {
 	delta := 0.01
 	epsilon := 0.05
+	topK := uint64(10)
 
 	words := loadWords()
 
@@ -97,7 +99,7 @@ func TestDeltaEpsilon(t *testing.T) {
 		}
 	}
 
-	sketch, _ := NewTopK(10, uint64(len(words)), delta) //New(delta, epsilon)
+	sketch, _ := NewTopK(topK, uint64(len(words)), delta)
 
 	for _, w := range words {
 		sketch.Insert(w, 1)
@@ -105,9 +107,57 @@ func TestDeltaEpsilon(t *testing.T) {
 
 	exact := exactCount(words)
 
-	for _, res := range sketch.Result(1)[:10] {
-		fmt.Printf("%s=%d (exact: %d)\n", res.Key, res.Count, exact[res.Key])
+	assertErrorRate(t, exact, sketch.Result(1), delta, epsilon)
+	//assertErrorRate(t, exact, sketch.Result(1)[:topK], delta, epsilon) // We would LOVE this to pass!
+}
+
+func TestMerge2(t *testing.T) {
+	delta := 0.01
+	epsilon := 0.05
+	topK := uint64(20)
+
+	words := loadWords()
+
+	// Words in prime index positions are copied
+	for _, p := range []int{2, 3, 5, 7, 11, 13, 17, 23} {
+		for i := p; i < len(words); i += p {
+			words[i] = words[p]
+		}
 	}
 
-	assertErrorRate(t, exact, sketch, delta, epsilon)
+	sketch1, _ := NewTopK(topK, uint64(len(words)), delta) //New(delta, epsilon)
+	sketch2, _ := NewTopK(topK, uint64(len(words)), delta) //New(delta, epsilon)
+
+	split := len(words) / 2
+	words1 := words[:split]
+	words2 := words[split:]
+
+	for _, w := range words1 {
+		sketch1.Insert(w, 1)
+	}
+
+	for _, w := range words2 {
+		sketch2.Insert(w, 1)
+	}
+
+	exact1 := exactCount(words1)
+	exact2 := exactCount(words2)
+	exactAll := exactCount(words)
+
+	assertErrorRate(t, exact1, sketch1.Result(1), delta, epsilon)
+	assertErrorRate(t, exact2, sketch2.Result(1), delta, epsilon)
+	assertErrorRate(t, exactAll, sketch2.Result(1), delta, epsilon) // This should NOT PASS but it does
+	//assertErrorRate(t, exact1, sketch1.Result(1)[:topK], delta, epsilon) // We would LOVE this to pass!
+	//assertErrorRate(t, exact2, sketch2.Result(1)[:topK], delta, epsilon) // We would LOVE this to pass!
+
+	if err := sketch1.Merge(sketch2); err != nil {
+		t.Error("Merge failed")
+	}
+
+	for _, res := range sketch1.Result(1)[:topK] {
+		fmt.Printf("%s=%d (exact: %d)\n", res.Key, res.Count, exactAll[res.Key])
+	}
+
+	assertErrorRate(t, exactAll, sketch1.Result(1), delta, epsilon)        // Should pass according to article, but does not
+	assertErrorRate(t, exactAll, sketch1.Result(1)[:topK], delta, epsilon) // We would LOVE this to pass!
 }

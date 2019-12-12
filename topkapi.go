@@ -8,6 +8,8 @@ import (
 	"github.com/dgryski/go-metro"
 )
 
+var incompatibleSketches = errors.New("Incompatible sketches")
+
 type LocalHeavyHitter struct {
 	Key   string
 	Count uint64
@@ -51,7 +53,7 @@ func NewTopK(k, approxCorpusSize uint64, delta float64) (*Sketch, error) {
 
 	// topkapi requires  epsilon < phi, where k = phi*corpusSize
 	phi := float64(k) / float64(approxCorpusSize)
-	epsilon := phi * 0.80
+	epsilon := phi * 0.80 // 8% error margin for top10 in corpus size 100
 
 	return New(delta, epsilon)
 }
@@ -135,4 +137,34 @@ func (sk *Sketch) Result(threshold uint64) []LocalHeavyHitter {
 	})
 
 	return cs
+}
+
+func (sk *Sketch) Merge(other *Sketch) error {
+	if sk.b != other.b || sk.l != other.l {
+		return incompatibleSketches
+	}
+
+	for i := range sk.counts {
+		ws := sk.words[i]
+		ows := other.words[i]
+		cnt := sk.counts[i]
+		ocnt := other.counts[i]
+		for j := range cnt {
+			if ws[j] == ows[j] {
+				cnt[j] += ocnt[j]
+			} else if cnt[j] < ocnt[j] {
+				ws[j] = ows[j]
+				cnt[j] = ocnt[j]
+			}
+
+		}
+
+		cms := sk.cms[i]
+		ocms := other.cms[i]
+		for j := range cms {
+			cms[j] += ocms[j]
+		}
+	}
+
+	return nil
 }
