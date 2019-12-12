@@ -24,7 +24,7 @@ type Sketch struct {
 // New creates a new Topkapi Sketch with given error rate and confidence.
 // Accuracy guarantees will be made in terms of a pair of user specified parameters,
 // ε and δ, meaning that the error in answering a query is within a factor of ε with
-// probability δ
+// probability 1-δ
 func New(delta, epsilon float64) (*Sketch, error) {
 	if epsilon <= 0 || epsilon >= 1 {
 		return nil, errors.New("topkapi: value of epsilon should be in range of (0, 1)")
@@ -34,8 +34,8 @@ func New(delta, epsilon float64) (*Sketch, error) {
 	}
 
 	var (
-		b = uint64(math.Ceil(1 / delta))
-		l = uint64(math.Log(2 / epsilon))
+		b = uint64(math.Ceil(1 / epsilon))
+		l = uint64(math.Log(2 / delta))
 	)
 
 	return newSketch(b, l), nil
