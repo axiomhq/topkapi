@@ -42,17 +42,18 @@ func New(delta, epsilon float64) (*Sketch, error) {
 
 }
 
-func NewK(k uint64) (*Sketch, error) {
+// NewTopK creates a sketch suitable for finding TopK in a corpus of a given size.
+// with an error rate of delta.
+func NewTopK(k, approxCorpusSize uint64, delta float64) (*Sketch, error) {
 	if k < 1 {
 		return nil, errors.New("topkapi: value of k should be in >= 1")
 	}
 
-	var (
-		b        = k * 100
-		l uint64 = 7
-	)
+	// topkapi requires  epsilon < phi, where k = phi*corpusSize
+	phi := float64(k) / float64(approxCorpusSize)
+	epsilon := phi * 0.80
 
-	return newSketch(b, l), nil
+	return New(delta, epsilon)
 }
 
 func newSketch(b, l uint64) *Sketch {

@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"strings"
 	"testing"
@@ -51,13 +52,13 @@ func errorRate(epsilon float64, exact, sketch map[string]uint64) float64 {
 	var numOk, numBad int
 
 	for w, wc := range sketch {
-		exactwc, wcf := float64(exact[w]), float64(wc)
-		lowerBound := exactwc * (1 - epsilon)
-		upperBound := exactwc * (1 + epsilon)
+		exactwc := float64(exact[w])
+		lowerBound := uint64(math.Floor(exactwc * (1 - epsilon)))
+		upperBound := uint64(math.Ceil(exactwc * (1 + epsilon)))
 
-		if wcf < lowerBound || wcf > upperBound {
+		if wc < lowerBound || wc > upperBound {
 			numBad++
-			fmt.Printf("!! %s: %d not in range [%f, %f]\n", w, wc, lowerBound, upperBound)
+			//fmt.Printf("!! %s: %d not in range [%d, %d]\n", w, wc, lowerBound, upperBound)
 		} else {
 			numOk++
 		}
@@ -79,23 +80,7 @@ func assertErrorRate(t *testing.T, exact map[string]uint64, sk *Sketch, delta, e
 	sketch := sketchToMap(sk)
 	effectiveEpsilon := errorRate(epsilon, exact, sketch)
 	if effectiveEpsilon >= epsilon {
-		t.Errorf("Expected error rate <= %f. Found %f", epsilon, effectiveEpsilon)
-	}
-}
-
-// Just a sanity check that counts are == 1 when running on a small sample set without duplicates
-func TestSingleWordsInSmallSample(t *testing.T) {
-	top10, _ := NewK(10)
-	words := loadWords()[:100]
-
-	for _, w := range words {
-		top10.Insert(w, 1)
-	}
-
-	for _, res := range top10.Result(1) {
-		if res.Count != 1 {
-			t.Errorf("Bad count for '%s'. Expected %d found %d", res.Key, 1, res.Count)
-		}
+		t.Errorf("Expected error rate <= %f. Found %f. Sketch size: %d", epsilon, effectiveEpsilon, len(sketch))
 	}
 }
 
@@ -103,7 +88,6 @@ func TestDeltaEpsilon(t *testing.T) {
 	delta := 0.01
 	epsilon := 0.05
 
-	sketch, _ := New(delta, epsilon)
 	words := loadWords()
 
 	// Words in prime index positions are copied
@@ -112,6 +96,8 @@ func TestDeltaEpsilon(t *testing.T) {
 			words[i] = words[p]
 		}
 	}
+
+	sketch, _ := NewTopK(10, uint64(len(words)), delta) //New(delta, epsilon)
 
 	for _, w := range words {
 		sketch.Insert(w, 1)
