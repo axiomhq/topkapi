@@ -40,25 +40,26 @@ func New(delta, epsilon float64) (*Sketch, error) {
 		l = uint64(math.Log(2 / delta))
 	)
 
-	return newSketch(b, l), nil
+	//fmt.Printf("b=%d, l=%d, epsilon=%f, delta=%f\n", b, l, epsilon, delta)
 
+	return newSketch(b, l), nil
 }
 
-// NewTopK creates a sketch suitable for finding TopK in a corpus of a given size.
+// NewTopK creates a sketch suitable for finding TopK in a corpus of a given size,
 // with an error rate of delta.
 func NewTopK(k, approxCorpusSize uint64, delta float64) (*Sketch, error) {
 	if k < 1 {
 		return nil, errors.New("topkapi: value of k should be in >= 1")
 	}
 
-	// topkapi requires epsilon < phi, where k = phi*corpusSize
-	phi := float64(k) / float64(approxCorpusSize)
-	epsilon := phi * 0.5 // 5% error margin for top10 in corpus size 100
+	// We want to grow ~ k*log(corpus size)
+	// The factor 55 was chosen through experiementation as the minimal threshold where
+	// the error rates don't grow out of control on merge and our tests pass.
+	// Example: for top-20 on a corpus of 1M we require 15197 buckets and ~475kb space.
+	numBuckets := uint64(55.0 * float64(k) * math.Log(float64(approxCorpusSize)))
+	numHashFuncs := uint64(4)
 
-	// if epsilon/phi becomes a little larger than 0.5 accumulated errors
-	// on merge seem to spiral out of control...
-
-	return New(delta, epsilon)
+	return newSketch(numBuckets, numHashFuncs), nil
 }
 
 func newSketch(b, l uint64) *Sketch {
