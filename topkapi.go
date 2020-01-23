@@ -5,6 +5,7 @@ import (
 	"math"
 	"sort"
 
+	"github.com/axiomhq/topkapi/internal/msgp"
 	"github.com/dgryski/go-metro"
 )
 
@@ -94,6 +95,7 @@ func (sk *Sketch) Delta() float64 {
 	return 2.0 / math.Exp(float64(sk.l))
 }
 
+// Insert ...
 func (sk *Sketch) Insert(key string, count uint64) {
 	var (
 		hsum = metro.Hash64Str(key, 1337)
@@ -119,6 +121,7 @@ func (sk *Sketch) Insert(key string, count uint64) {
 	}
 }
 
+// Result ...
 func (sk *Sketch) Result(threshold uint64) []LocalHeavyHitter {
 	var (
 		seen = make(map[string]int)
@@ -153,6 +156,7 @@ func (sk *Sketch) Result(threshold uint64) []LocalHeavyHitter {
 	return cs
 }
 
+// Merge ...
 func (sk *Sketch) Merge(other *Sketch) error {
 	if sk.b != other.b || sk.l != other.l {
 		return incompatibleSketches
@@ -179,5 +183,33 @@ func (sk *Sketch) Merge(other *Sketch) error {
 		}
 	}
 
+	return nil
+}
+
+// Marshal ...
+func (sk *Sketch) Marshal() ([]byte, error) {
+	tmp := &msgp.Sketch{
+		L:      sk.l,
+		B:      sk.b,
+		CMS:    sk.cms,
+		Counts: sk.counts,
+		Words:  sk.words,
+	}
+	return tmp.MarshalMsg(nil)
+}
+
+// Unmarshal ...
+func (sk *Sketch) Unmarshal(p []byte) error {
+	tmp := &msgp.Sketch{}
+	if _, err := tmp.UnmarshalMsg(p); err != nil {
+		return err
+	}
+	*sk = Sketch{
+		l:      tmp.L,
+		b:      tmp.B,
+		cms:    tmp.CMS,
+		counts: tmp.Counts,
+		words:  tmp.Words,
+	}
 	return nil
 }
