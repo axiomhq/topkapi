@@ -9,6 +9,8 @@ import (
 	"sort"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func loadWords() []string {
@@ -133,6 +135,35 @@ func TestSingle(t *testing.T) {
 			t.Errorf("Expected top %d/%d to be '%s'(%d) found '%s'(%d)", i, topK, w, exact[w], skTop[i].Key, skTop[i].Count)
 		}
 	}
+}
+
+func TestMarshalUnMarshal(t *testing.T) {
+	delta := 0.05
+	topK := uint64(100)
+
+	words := loadWords()
+
+	// Words in prime index positions are copied
+	for _, p := range []int{2, 3, 5, 7, 11, 13, 17, 23} {
+		for i := p; i < len(words); i += p {
+			words[i] = words[p]
+		}
+	}
+
+	sketch, _ := NewTopK(topK, uint64(len(words)), delta)
+
+	for _, w := range words {
+		sketch.Insert(w, 1)
+	}
+
+	p, err := sketch.Marshal()
+	assert.NoError(t, err)
+
+	tmp := &Sketch{}
+	err = tmp.Unmarshal(p)
+	assert.NoError(t, err)
+	assert.EqualValues(t, sketch, tmp)
+
 }
 
 func TestMerge2(t *testing.T) {
