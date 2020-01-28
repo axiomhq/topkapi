@@ -36,98 +36,128 @@ func (z *Sketch) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "B")
 				return
 			}
-		case "CMS":
+		case "Sparse":
 			var zb0002 uint32
-			zb0002, err = dc.ReadArrayHeader()
+			zb0002, err = dc.ReadMapHeader()
+			if err != nil {
+				err = msgp.WrapError(err, "Sparse")
+				return
+			}
+			if z.Sparse == nil {
+				z.Sparse = make(map[string]uint64, zb0002)
+			} else if len(z.Sparse) > 0 {
+				for key := range z.Sparse {
+					delete(z.Sparse, key)
+				}
+			}
+			for zb0002 > 0 {
+				zb0002--
+				var za0001 string
+				var za0002 uint64
+				za0001, err = dc.ReadString()
+				if err != nil {
+					err = msgp.WrapError(err, "Sparse")
+					return
+				}
+				za0002, err = dc.ReadUint64()
+				if err != nil {
+					err = msgp.WrapError(err, "Sparse", za0001)
+					return
+				}
+				z.Sparse[za0001] = za0002
+			}
+		case "CMS":
+			var zb0003 uint32
+			zb0003, err = dc.ReadArrayHeader()
 			if err != nil {
 				err = msgp.WrapError(err, "CMS")
 				return
 			}
-			if cap(z.CMS) >= int(zb0002) {
-				z.CMS = (z.CMS)[:zb0002]
+			if cap(z.CMS) >= int(zb0003) {
+				z.CMS = (z.CMS)[:zb0003]
 			} else {
-				z.CMS = make([][]uint64, zb0002)
+				z.CMS = make([][]uint64, zb0003)
 			}
-			for za0001 := range z.CMS {
-				var zb0003 uint32
-				zb0003, err = dc.ReadArrayHeader()
+			for za0003 := range z.CMS {
+				var zb0004 uint32
+				zb0004, err = dc.ReadArrayHeader()
 				if err != nil {
-					err = msgp.WrapError(err, "CMS", za0001)
+					err = msgp.WrapError(err, "CMS", za0003)
 					return
 				}
-				if cap(z.CMS[za0001]) >= int(zb0003) {
-					z.CMS[za0001] = (z.CMS[za0001])[:zb0003]
+				if cap(z.CMS[za0003]) >= int(zb0004) {
+					z.CMS[za0003] = (z.CMS[za0003])[:zb0004]
 				} else {
-					z.CMS[za0001] = make([]uint64, zb0003)
+					z.CMS[za0003] = make([]uint64, zb0004)
 				}
-				for za0002 := range z.CMS[za0001] {
-					z.CMS[za0001][za0002], err = dc.ReadUint64()
+				for za0004 := range z.CMS[za0003] {
+					z.CMS[za0003][za0004], err = dc.ReadUint64()
 					if err != nil {
-						err = msgp.WrapError(err, "CMS", za0001, za0002)
+						err = msgp.WrapError(err, "CMS", za0003, za0004)
 						return
 					}
 				}
 			}
 		case "Counts":
-			var zb0004 uint32
-			zb0004, err = dc.ReadArrayHeader()
+			var zb0005 uint32
+			zb0005, err = dc.ReadArrayHeader()
 			if err != nil {
 				err = msgp.WrapError(err, "Counts")
 				return
 			}
-			if cap(z.Counts) >= int(zb0004) {
-				z.Counts = (z.Counts)[:zb0004]
+			if cap(z.Counts) >= int(zb0005) {
+				z.Counts = (z.Counts)[:zb0005]
 			} else {
-				z.Counts = make([][]int64, zb0004)
+				z.Counts = make([][]int64, zb0005)
 			}
-			for za0003 := range z.Counts {
-				var zb0005 uint32
-				zb0005, err = dc.ReadArrayHeader()
+			for za0005 := range z.Counts {
+				var zb0006 uint32
+				zb0006, err = dc.ReadArrayHeader()
 				if err != nil {
-					err = msgp.WrapError(err, "Counts", za0003)
+					err = msgp.WrapError(err, "Counts", za0005)
 					return
 				}
-				if cap(z.Counts[za0003]) >= int(zb0005) {
-					z.Counts[za0003] = (z.Counts[za0003])[:zb0005]
+				if cap(z.Counts[za0005]) >= int(zb0006) {
+					z.Counts[za0005] = (z.Counts[za0005])[:zb0006]
 				} else {
-					z.Counts[za0003] = make([]int64, zb0005)
+					z.Counts[za0005] = make([]int64, zb0006)
 				}
-				for za0004 := range z.Counts[za0003] {
-					z.Counts[za0003][za0004], err = dc.ReadInt64()
+				for za0006 := range z.Counts[za0005] {
+					z.Counts[za0005][za0006], err = dc.ReadInt64()
 					if err != nil {
-						err = msgp.WrapError(err, "Counts", za0003, za0004)
+						err = msgp.WrapError(err, "Counts", za0005, za0006)
 						return
 					}
 				}
 			}
 		case "Words":
-			var zb0006 uint32
-			zb0006, err = dc.ReadArrayHeader()
+			var zb0007 uint32
+			zb0007, err = dc.ReadArrayHeader()
 			if err != nil {
 				err = msgp.WrapError(err, "Words")
 				return
 			}
-			if cap(z.Words) >= int(zb0006) {
-				z.Words = (z.Words)[:zb0006]
+			if cap(z.Words) >= int(zb0007) {
+				z.Words = (z.Words)[:zb0007]
 			} else {
-				z.Words = make([][]string, zb0006)
+				z.Words = make([][]string, zb0007)
 			}
-			for za0005 := range z.Words {
-				var zb0007 uint32
-				zb0007, err = dc.ReadArrayHeader()
+			for za0007 := range z.Words {
+				var zb0008 uint32
+				zb0008, err = dc.ReadArrayHeader()
 				if err != nil {
-					err = msgp.WrapError(err, "Words", za0005)
+					err = msgp.WrapError(err, "Words", za0007)
 					return
 				}
-				if cap(z.Words[za0005]) >= int(zb0007) {
-					z.Words[za0005] = (z.Words[za0005])[:zb0007]
+				if cap(z.Words[za0007]) >= int(zb0008) {
+					z.Words[za0007] = (z.Words[za0007])[:zb0008]
 				} else {
-					z.Words[za0005] = make([]string, zb0007)
+					z.Words[za0007] = make([]string, zb0008)
 				}
-				for za0006 := range z.Words[za0005] {
-					z.Words[za0005][za0006], err = dc.ReadString()
+				for za0008 := range z.Words[za0007] {
+					z.Words[za0007][za0008], err = dc.ReadString()
 					if err != nil {
-						err = msgp.WrapError(err, "Words", za0005, za0006)
+						err = msgp.WrapError(err, "Words", za0007, za0008)
 						return
 					}
 				}
@@ -145,9 +175,9 @@ func (z *Sketch) DecodeMsg(dc *msgp.Reader) (err error) {
 
 // EncodeMsg implements msgp.Encodable
 func (z *Sketch) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 5
+	// map header, size 6
 	// write "L"
-	err = en.Append(0x85, 0xa1, 0x4c)
+	err = en.Append(0x86, 0xa1, 0x4c)
 	if err != nil {
 		return
 	}
@@ -166,6 +196,28 @@ func (z *Sketch) EncodeMsg(en *msgp.Writer) (err error) {
 		err = msgp.WrapError(err, "B")
 		return
 	}
+	// write "Sparse"
+	err = en.Append(0xa6, 0x53, 0x70, 0x61, 0x72, 0x73, 0x65)
+	if err != nil {
+		return
+	}
+	err = en.WriteMapHeader(uint32(len(z.Sparse)))
+	if err != nil {
+		err = msgp.WrapError(err, "Sparse")
+		return
+	}
+	for za0001, za0002 := range z.Sparse {
+		err = en.WriteString(za0001)
+		if err != nil {
+			err = msgp.WrapError(err, "Sparse")
+			return
+		}
+		err = en.WriteUint64(za0002)
+		if err != nil {
+			err = msgp.WrapError(err, "Sparse", za0001)
+			return
+		}
+	}
 	// write "CMS"
 	err = en.Append(0xa3, 0x43, 0x4d, 0x53)
 	if err != nil {
@@ -176,16 +228,16 @@ func (z *Sketch) EncodeMsg(en *msgp.Writer) (err error) {
 		err = msgp.WrapError(err, "CMS")
 		return
 	}
-	for za0001 := range z.CMS {
-		err = en.WriteArrayHeader(uint32(len(z.CMS[za0001])))
+	for za0003 := range z.CMS {
+		err = en.WriteArrayHeader(uint32(len(z.CMS[za0003])))
 		if err != nil {
-			err = msgp.WrapError(err, "CMS", za0001)
+			err = msgp.WrapError(err, "CMS", za0003)
 			return
 		}
-		for za0002 := range z.CMS[za0001] {
-			err = en.WriteUint64(z.CMS[za0001][za0002])
+		for za0004 := range z.CMS[za0003] {
+			err = en.WriteUint64(z.CMS[za0003][za0004])
 			if err != nil {
-				err = msgp.WrapError(err, "CMS", za0001, za0002)
+				err = msgp.WrapError(err, "CMS", za0003, za0004)
 				return
 			}
 		}
@@ -200,16 +252,16 @@ func (z *Sketch) EncodeMsg(en *msgp.Writer) (err error) {
 		err = msgp.WrapError(err, "Counts")
 		return
 	}
-	for za0003 := range z.Counts {
-		err = en.WriteArrayHeader(uint32(len(z.Counts[za0003])))
+	for za0005 := range z.Counts {
+		err = en.WriteArrayHeader(uint32(len(z.Counts[za0005])))
 		if err != nil {
-			err = msgp.WrapError(err, "Counts", za0003)
+			err = msgp.WrapError(err, "Counts", za0005)
 			return
 		}
-		for za0004 := range z.Counts[za0003] {
-			err = en.WriteInt64(z.Counts[za0003][za0004])
+		for za0006 := range z.Counts[za0005] {
+			err = en.WriteInt64(z.Counts[za0005][za0006])
 			if err != nil {
-				err = msgp.WrapError(err, "Counts", za0003, za0004)
+				err = msgp.WrapError(err, "Counts", za0005, za0006)
 				return
 			}
 		}
@@ -224,16 +276,16 @@ func (z *Sketch) EncodeMsg(en *msgp.Writer) (err error) {
 		err = msgp.WrapError(err, "Words")
 		return
 	}
-	for za0005 := range z.Words {
-		err = en.WriteArrayHeader(uint32(len(z.Words[za0005])))
+	for za0007 := range z.Words {
+		err = en.WriteArrayHeader(uint32(len(z.Words[za0007])))
 		if err != nil {
-			err = msgp.WrapError(err, "Words", za0005)
+			err = msgp.WrapError(err, "Words", za0007)
 			return
 		}
-		for za0006 := range z.Words[za0005] {
-			err = en.WriteString(z.Words[za0005][za0006])
+		for za0008 := range z.Words[za0007] {
+			err = en.WriteString(z.Words[za0007][za0008])
 			if err != nil {
-				err = msgp.WrapError(err, "Words", za0005, za0006)
+				err = msgp.WrapError(err, "Words", za0007, za0008)
 				return
 			}
 		}
@@ -244,38 +296,45 @@ func (z *Sketch) EncodeMsg(en *msgp.Writer) (err error) {
 // MarshalMsg implements msgp.Marshaler
 func (z *Sketch) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 5
+	// map header, size 6
 	// string "L"
-	o = append(o, 0x85, 0xa1, 0x4c)
+	o = append(o, 0x86, 0xa1, 0x4c)
 	o = msgp.AppendUint64(o, z.L)
 	// string "B"
 	o = append(o, 0xa1, 0x42)
 	o = msgp.AppendUint64(o, z.B)
+	// string "Sparse"
+	o = append(o, 0xa6, 0x53, 0x70, 0x61, 0x72, 0x73, 0x65)
+	o = msgp.AppendMapHeader(o, uint32(len(z.Sparse)))
+	for za0001, za0002 := range z.Sparse {
+		o = msgp.AppendString(o, za0001)
+		o = msgp.AppendUint64(o, za0002)
+	}
 	// string "CMS"
 	o = append(o, 0xa3, 0x43, 0x4d, 0x53)
 	o = msgp.AppendArrayHeader(o, uint32(len(z.CMS)))
-	for za0001 := range z.CMS {
-		o = msgp.AppendArrayHeader(o, uint32(len(z.CMS[za0001])))
-		for za0002 := range z.CMS[za0001] {
-			o = msgp.AppendUint64(o, z.CMS[za0001][za0002])
+	for za0003 := range z.CMS {
+		o = msgp.AppendArrayHeader(o, uint32(len(z.CMS[za0003])))
+		for za0004 := range z.CMS[za0003] {
+			o = msgp.AppendUint64(o, z.CMS[za0003][za0004])
 		}
 	}
 	// string "Counts"
 	o = append(o, 0xa6, 0x43, 0x6f, 0x75, 0x6e, 0x74, 0x73)
 	o = msgp.AppendArrayHeader(o, uint32(len(z.Counts)))
-	for za0003 := range z.Counts {
-		o = msgp.AppendArrayHeader(o, uint32(len(z.Counts[za0003])))
-		for za0004 := range z.Counts[za0003] {
-			o = msgp.AppendInt64(o, z.Counts[za0003][za0004])
+	for za0005 := range z.Counts {
+		o = msgp.AppendArrayHeader(o, uint32(len(z.Counts[za0005])))
+		for za0006 := range z.Counts[za0005] {
+			o = msgp.AppendInt64(o, z.Counts[za0005][za0006])
 		}
 	}
 	// string "Words"
 	o = append(o, 0xa5, 0x57, 0x6f, 0x72, 0x64, 0x73)
 	o = msgp.AppendArrayHeader(o, uint32(len(z.Words)))
-	for za0005 := range z.Words {
-		o = msgp.AppendArrayHeader(o, uint32(len(z.Words[za0005])))
-		for za0006 := range z.Words[za0005] {
-			o = msgp.AppendString(o, z.Words[za0005][za0006])
+	for za0007 := range z.Words {
+		o = msgp.AppendArrayHeader(o, uint32(len(z.Words[za0007])))
+		for za0008 := range z.Words[za0007] {
+			o = msgp.AppendString(o, z.Words[za0007][za0008])
 		}
 	}
 	return
@@ -311,98 +370,128 @@ func (z *Sketch) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				err = msgp.WrapError(err, "B")
 				return
 			}
-		case "CMS":
+		case "Sparse":
 			var zb0002 uint32
-			zb0002, bts, err = msgp.ReadArrayHeaderBytes(bts)
+			zb0002, bts, err = msgp.ReadMapHeaderBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Sparse")
+				return
+			}
+			if z.Sparse == nil {
+				z.Sparse = make(map[string]uint64, zb0002)
+			} else if len(z.Sparse) > 0 {
+				for key := range z.Sparse {
+					delete(z.Sparse, key)
+				}
+			}
+			for zb0002 > 0 {
+				var za0001 string
+				var za0002 uint64
+				zb0002--
+				za0001, bts, err = msgp.ReadStringBytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "Sparse")
+					return
+				}
+				za0002, bts, err = msgp.ReadUint64Bytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "Sparse", za0001)
+					return
+				}
+				z.Sparse[za0001] = za0002
+			}
+		case "CMS":
+			var zb0003 uint32
+			zb0003, bts, err = msgp.ReadArrayHeaderBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "CMS")
 				return
 			}
-			if cap(z.CMS) >= int(zb0002) {
-				z.CMS = (z.CMS)[:zb0002]
+			if cap(z.CMS) >= int(zb0003) {
+				z.CMS = (z.CMS)[:zb0003]
 			} else {
-				z.CMS = make([][]uint64, zb0002)
+				z.CMS = make([][]uint64, zb0003)
 			}
-			for za0001 := range z.CMS {
-				var zb0003 uint32
-				zb0003, bts, err = msgp.ReadArrayHeaderBytes(bts)
+			for za0003 := range z.CMS {
+				var zb0004 uint32
+				zb0004, bts, err = msgp.ReadArrayHeaderBytes(bts)
 				if err != nil {
-					err = msgp.WrapError(err, "CMS", za0001)
+					err = msgp.WrapError(err, "CMS", za0003)
 					return
 				}
-				if cap(z.CMS[za0001]) >= int(zb0003) {
-					z.CMS[za0001] = (z.CMS[za0001])[:zb0003]
+				if cap(z.CMS[za0003]) >= int(zb0004) {
+					z.CMS[za0003] = (z.CMS[za0003])[:zb0004]
 				} else {
-					z.CMS[za0001] = make([]uint64, zb0003)
+					z.CMS[za0003] = make([]uint64, zb0004)
 				}
-				for za0002 := range z.CMS[za0001] {
-					z.CMS[za0001][za0002], bts, err = msgp.ReadUint64Bytes(bts)
+				for za0004 := range z.CMS[za0003] {
+					z.CMS[za0003][za0004], bts, err = msgp.ReadUint64Bytes(bts)
 					if err != nil {
-						err = msgp.WrapError(err, "CMS", za0001, za0002)
+						err = msgp.WrapError(err, "CMS", za0003, za0004)
 						return
 					}
 				}
 			}
 		case "Counts":
-			var zb0004 uint32
-			zb0004, bts, err = msgp.ReadArrayHeaderBytes(bts)
+			var zb0005 uint32
+			zb0005, bts, err = msgp.ReadArrayHeaderBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "Counts")
 				return
 			}
-			if cap(z.Counts) >= int(zb0004) {
-				z.Counts = (z.Counts)[:zb0004]
+			if cap(z.Counts) >= int(zb0005) {
+				z.Counts = (z.Counts)[:zb0005]
 			} else {
-				z.Counts = make([][]int64, zb0004)
+				z.Counts = make([][]int64, zb0005)
 			}
-			for za0003 := range z.Counts {
-				var zb0005 uint32
-				zb0005, bts, err = msgp.ReadArrayHeaderBytes(bts)
+			for za0005 := range z.Counts {
+				var zb0006 uint32
+				zb0006, bts, err = msgp.ReadArrayHeaderBytes(bts)
 				if err != nil {
-					err = msgp.WrapError(err, "Counts", za0003)
+					err = msgp.WrapError(err, "Counts", za0005)
 					return
 				}
-				if cap(z.Counts[za0003]) >= int(zb0005) {
-					z.Counts[za0003] = (z.Counts[za0003])[:zb0005]
+				if cap(z.Counts[za0005]) >= int(zb0006) {
+					z.Counts[za0005] = (z.Counts[za0005])[:zb0006]
 				} else {
-					z.Counts[za0003] = make([]int64, zb0005)
+					z.Counts[za0005] = make([]int64, zb0006)
 				}
-				for za0004 := range z.Counts[za0003] {
-					z.Counts[za0003][za0004], bts, err = msgp.ReadInt64Bytes(bts)
+				for za0006 := range z.Counts[za0005] {
+					z.Counts[za0005][za0006], bts, err = msgp.ReadInt64Bytes(bts)
 					if err != nil {
-						err = msgp.WrapError(err, "Counts", za0003, za0004)
+						err = msgp.WrapError(err, "Counts", za0005, za0006)
 						return
 					}
 				}
 			}
 		case "Words":
-			var zb0006 uint32
-			zb0006, bts, err = msgp.ReadArrayHeaderBytes(bts)
+			var zb0007 uint32
+			zb0007, bts, err = msgp.ReadArrayHeaderBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "Words")
 				return
 			}
-			if cap(z.Words) >= int(zb0006) {
-				z.Words = (z.Words)[:zb0006]
+			if cap(z.Words) >= int(zb0007) {
+				z.Words = (z.Words)[:zb0007]
 			} else {
-				z.Words = make([][]string, zb0006)
+				z.Words = make([][]string, zb0007)
 			}
-			for za0005 := range z.Words {
-				var zb0007 uint32
-				zb0007, bts, err = msgp.ReadArrayHeaderBytes(bts)
+			for za0007 := range z.Words {
+				var zb0008 uint32
+				zb0008, bts, err = msgp.ReadArrayHeaderBytes(bts)
 				if err != nil {
-					err = msgp.WrapError(err, "Words", za0005)
+					err = msgp.WrapError(err, "Words", za0007)
 					return
 				}
-				if cap(z.Words[za0005]) >= int(zb0007) {
-					z.Words[za0005] = (z.Words[za0005])[:zb0007]
+				if cap(z.Words[za0007]) >= int(zb0008) {
+					z.Words[za0007] = (z.Words[za0007])[:zb0008]
 				} else {
-					z.Words[za0005] = make([]string, zb0007)
+					z.Words[za0007] = make([]string, zb0008)
 				}
-				for za0006 := range z.Words[za0005] {
-					z.Words[za0005][za0006], bts, err = msgp.ReadStringBytes(bts)
+				for za0008 := range z.Words[za0007] {
+					z.Words[za0007][za0008], bts, err = msgp.ReadStringBytes(bts)
 					if err != nil {
-						err = msgp.WrapError(err, "Words", za0005, za0006)
+						err = msgp.WrapError(err, "Words", za0007, za0008)
 						return
 					}
 				}
@@ -421,19 +510,26 @@ func (z *Sketch) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *Sketch) Msgsize() (s int) {
-	s = 1 + 2 + msgp.Uint64Size + 2 + msgp.Uint64Size + 4 + msgp.ArrayHeaderSize
-	for za0001 := range z.CMS {
-		s += msgp.ArrayHeaderSize + (len(z.CMS[za0001]) * (msgp.Uint64Size))
+	s = 1 + 2 + msgp.Uint64Size + 2 + msgp.Uint64Size + 7 + msgp.MapHeaderSize
+	if z.Sparse != nil {
+		for za0001, za0002 := range z.Sparse {
+			_ = za0002
+			s += msgp.StringPrefixSize + len(za0001) + msgp.Uint64Size
+		}
+	}
+	s += 4 + msgp.ArrayHeaderSize
+	for za0003 := range z.CMS {
+		s += msgp.ArrayHeaderSize + (len(z.CMS[za0003]) * (msgp.Uint64Size))
 	}
 	s += 7 + msgp.ArrayHeaderSize
-	for za0003 := range z.Counts {
-		s += msgp.ArrayHeaderSize + (len(z.Counts[za0003]) * (msgp.Int64Size))
+	for za0005 := range z.Counts {
+		s += msgp.ArrayHeaderSize + (len(z.Counts[za0005]) * (msgp.Int64Size))
 	}
 	s += 6 + msgp.ArrayHeaderSize
-	for za0005 := range z.Words {
+	for za0007 := range z.Words {
 		s += msgp.ArrayHeaderSize
-		for za0006 := range z.Words[za0005] {
-			s += msgp.StringPrefixSize + len(z.Words[za0005][za0006])
+		for za0008 := range z.Words[za0007] {
+			s += msgp.StringPrefixSize + len(z.Words[za0007][za0008])
 		}
 	}
 	return

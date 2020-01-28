@@ -120,6 +120,8 @@ func TestSingle(t *testing.T) {
 		sketch.Insert(w, 1)
 	}
 
+	assert.NotNil(t, sketch.sparse)
+
 	exact := exactCount(words)
 	top := exactTop(exact)
 
@@ -357,4 +359,51 @@ func split(words []string, splits int) [][]string {
 	}
 
 	return slices
+}
+
+func gcd(a, b int64) int64 {
+	for b > 0 {
+		a, b = b, a%b
+	}
+	return a
+}
+
+func semiRandomNumber(i int64) int64 {
+	b := i / 4
+	if b == 0 {
+		b = i / 2
+	}
+	if b == 0 {
+		b = 1
+	}
+	return gcd(i, b)
+}
+
+func TestSimpleTopk(t *testing.T) {
+	tk, err := NewTopK(10, 1000, 0.05)
+	assert.NoError(t, err)
+	counts := make(map[string]uint64)
+	for i := int64(1); i <= 250; i++ {
+		key := fmt.Sprintf("val-%v", semiRandomNumber(i))
+		tk.Insert(key, 1)
+		counts[key]++
+	}
+
+	res := tk.Result(10)
+	val := make(map[string]uint64, len(res))
+	for _, lhh := range res[:50] {
+		val[lhh.Key] = lhh.Count
+	}
+
+	for word, count := range val {
+		assert.Equal(t, count, counts[word])
+	}
+
+	p, err := tk.Marshal()
+	assert.NoError(t, err)
+
+	tmp := &Sketch{}
+	err = tmp.Unmarshal(p)
+	assert.NoError(t, err)
+	assert.EqualValues(t, tk, tmp)
 }
