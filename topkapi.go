@@ -19,6 +19,7 @@ type LocalHeavyHitter struct {
 type Sketch struct {
 	l      uint64 // number of rows
 	b      uint64 // think of this as the k
+	sparse map[string]uint64
 	cms    [][]uint64
 	counts [][]int64
 	words  [][]string
@@ -64,25 +65,35 @@ func NewTopK(k, approxCorpusSize uint64, delta float64) (*Sketch, error) {
 }
 
 func newSketch(b, l uint64) *Sketch {
-	var (
-		cms    = make([][]uint64, l)
-		counts = make([][]int64, l)
-		words  = make([][]string, l)
-	)
-
-	for i := range counts {
-		cms[i] = make([]uint64, b)
-		counts[i] = make([]int64, b)
-		words[i] = make([]string, b)
-	}
-
 	return &Sketch{
 		l:      l,
 		b:      b,
-		counts: counts,
-		words:  words,
-		cms:    cms,
+		sparse: make(map[string]uint64, b),
 	}
+}
+
+func (sk *Sketch) convert() {
+	var (
+		cms    = make([][]uint64, sk.l)
+		counts = make([][]int64, sk.l)
+		words  = make([][]string, sk.l)
+	)
+
+	for i := range counts {
+		cms[i] = make([]uint64, sk.b)
+		counts[i] = make([]int64, sk.b)
+		words[i] = make([]string, sk.b)
+	}
+
+	sk.cms = cms
+	sk.words = words
+	sk.counts = counts
+
+	// populate the sketch
+	for key, count := range sk.sparse {
+		sk.insertDense(key, count)
+	}
+	sk.sparse = nil
 }
 
 // Epsilon is the approximate error range factor.
@@ -97,6 +108,17 @@ func (sk *Sketch) Delta() float64 {
 
 // Insert ...
 func (sk *Sketch) Insert(key string, count uint64) {
+	if sk.sparse != nil {
+		sk.sparse[key] += count
+		if uint64(len(sk.sparse)) >= sk.b {
+			sk.convert()
+		}
+	} else {
+		sk.insertDense(key, count)
+	}
+}
+
+func (sk *Sketch) insertDense(key string, count uint64) {
 	var (
 		hsum = metro.Hash64Str(key, 1337)
 		h1   = uint32(hsum & 0xffffffff)
@@ -128,23 +150,32 @@ func (sk *Sketch) Result(threshold uint64) []LocalHeavyHitter {
 		cs   = make([]LocalHeavyHitter, 0, sk.b)
 	)
 
-	for i := range sk.words {
-		for j, word := range sk.words[i] {
-			count := sk.cms[i][j]
-			if count < threshold {
-				continue
-			}
-			idx, ok := seen[word]
-			if !ok {
-				idx = len(cs)
-				seen[word] = idx
-				cs = append(cs, LocalHeavyHitter{
-					Key:   word,
-					Count: count,
-				})
-			}
-			if count < cs[idx].Count {
-				cs[idx].Count = count
+	if sk.sparse != nil {
+		for word, count := range sk.sparse {
+			cs = append(cs, LocalHeavyHitter{
+				Key:   word,
+				Count: count,
+			})
+		}
+	} else {
+		for i := range sk.words {
+			for j, word := range sk.words[i] {
+				count := sk.cms[i][j]
+				if count < threshold {
+					continue
+				}
+				idx, ok := seen[word]
+				if !ok {
+					idx = len(cs)
+					seen[word] = idx
+					cs = append(cs, LocalHeavyHitter{
+						Key:   word,
+						Count: count,
+					})
+				}
+				if count < cs[idx].Count {
+					cs[idx].Count = count
+				}
 			}
 		}
 	}
@@ -160,6 +191,18 @@ func (sk *Sketch) Result(threshold uint64) []LocalHeavyHitter {
 func (sk *Sketch) Merge(other *Sketch) error {
 	if sk.b != other.b || sk.l != other.l {
 		return incompatibleSketches
+	}
+
+	if other.sparse != nil {
+		for word, count := range other.sparse {
+			sk.Insert(word, count)
+		}
+		return nil
+	}
+
+	// other is not sparse so we should convert
+	if sk.sparse != nil {
+		sk.convert()
 	}
 
 	// HALP: This is probably wrong - the article doesn't explain how to merge!
@@ -179,7 +222,6 @@ func (sk *Sketch) Merge(other *Sketch) error {
 				cnt[j] = ocnt[j]
 				cms[j] = ocms[j]
 			}
-
 		}
 	}
 
@@ -194,6 +236,7 @@ func (sk *Sketch) Marshal() ([]byte, error) {
 		CMS:    sk.cms,
 		Counts: sk.counts,
 		Words:  sk.words,
+		Sparse: sk.sparse,
 	}
 	return tmp.MarshalMsg(nil)
 }
@@ -210,6 +253,7 @@ func (sk *Sketch) Unmarshal(p []byte) error {
 		cms:    tmp.CMS,
 		counts: tmp.Counts,
 		words:  tmp.Words,
+		sparse: tmp.Sparse,
 	}
 	return nil
 }
